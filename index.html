@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圈圈叉叉 (三戰兩勝)</title>
+
+    <style>
+        /* --- 基本樣式 --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* 更現代的字體棧 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 15px; /* 給body增加內邊距，避免內容貼邊 */
+            background-color: #f4f4f4;
+            color: #333;
+            box-sizing: border-box; /* 讓 padding 不會增加 body 總寬度 */
+            min-height: 100vh; /* 確保內容至少佔滿視窗高度 */
+            margin: 0; /* 重設預設 margin */
+        }
+
+        h1 {
+            color: #1a237e;
+            font-size: 1.8em; /* 稍微調整標題大小 */
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        #scoreboard {
+            font-size: 1.3em; /* 調整計分板大小 */
+            margin-bottom: 15px;
+            color: #555;
+            text-align: center;
+        }
+
+        #status {
+            font-size: 1.1em; /* 調整狀態文字大小 */
+            font-weight: bold;
+            margin-bottom: 20px;
+            min-height: 1.5em;
+            color: #d32f2f;
+            text-align: center;
+        }
+
+        /* --- 遊戲棋盤 (核心響應式調整) --- */
+        #gameBoard {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 使用分數單位，讓格子均分寬度 */
+            gap: 5px;
+            background-color: #ccc;
+            border: 5px solid #ccc;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+
+            /* 響應式寬度設定 */
+            width: 90vw; /* 佔視窗寬度的90% */
+            max-width: 400px; /* 最大寬度限制，避免在桌面上過大 */
+            margin-left: auto; /* 自動居中 */
+            margin-right: auto; /* 自動居中 */
+            aspect-ratio: 1 / 1; /* 保持棋盤為正方形 */
+        }
+
+        .cell {
+            /* width/height 由 grid 和 aspect-ratio 控制 */
+            background-color: #fff;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* 使用 clamp() 讓字體大小在範圍內隨視窗縮放 */
+            font-size: clamp(2.5em, 12vw, 6em); /* 最小2.5em, 理想12vw, 最大6em */
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            color: #333;
+            aspect-ratio: 1 / 1; /* 確保每個格子也是正方形 */
+            user-select: none; /* 防止意外選取 X 或 O 文字 */
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE/Edge */
+        }
+
+        /* 在非觸控裝置上才顯示 hover 效果 */
+        @media (hover: hover) and (pointer: fine) {
+            .cell:hover {
+                background-color: #e0e0e0;
+            }
+        }
+
+
+        .cell.x {
+            color: #1e88e5;
+        }
+
+        .cell.o {
+            color: #e53935;
+        }
+
+        /* --- 按鈕 --- */
+        button {
+            margin-top: 25px;
+            padding: 12px 25px;
+            font-size: 1.1em; /* 調整按鈕字體 */
+            cursor: pointer;
+            background-color: #1e88e5;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            /* 確保按鈕不會過寬 */
+            max-width: 90%;
+            box-sizing: border-box;
+        }
+
+         /* 在非觸控裝置上才顯示 hover 效果 */
+        @media (hover: hover) and (pointer: fine) {
+            button:hover {
+                background-color: #1565c0;
+            }
+        }
+
+        /* --- 遊戲結束樣式 --- */
+        .game-over .cell {
+            cursor: not-allowed;
+        }
+        .game-over #status {
+            color: green;
+            font-weight: bold;
+        }
+
+
+        /* --- Media Query: 可選，針對非常小的螢幕微調 --- */
+        @media (max-width: 360px) {
+            h1 {
+                font-size: 1.6em;
+            }
+            #scoreboard {
+                font-size: 1.1em;
+            }
+            #status {
+                font-size: 1em;
+            }
+            button {
+                font-size: 1em;
+                padding: 10px 20px;
+            }
+            #gameBoard {
+                gap: 3px; /* 略微減小格子間距 */
+                border-width: 3px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    <h1>圈圈叉叉 (三戰兩勝制)</h1>
+
+    <div id="scoreboard">
+        玩家 X: <span id="scoreX">0</span> | 玩家 O: <span id="scoreO">0</span>
+    </div>
+
+    <div id="status" role="status" aria-live="polite">輪到玩家 X</div>
+
+    <div id="gameBoard">
+        <div class="cell" data-index="0"></div>
+        <div class="cell" data-index="1"></div>
+        <div class="cell" data-index="2"></div>
+        <div class="cell" data-index="3"></div>
+        <div class="cell" data-index="4"></div>
+        <div class="cell" data-index="5"></div>
+        <div class="cell" data-index="6"></div>
+        <div class="cell" data-index="7"></div>
+        <div class="cell" data-index="8"></div>
+    </div>
+
+    <button id="resetMatchButton">重新開始整場比賽</button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cells = document.querySelectorAll('.cell');
+            const statusDisplay = document.getElementById('status');
+            const scoreXDisplay = document.getElementById('scoreX');
+            const scoreODisplay = document.getElementById('scoreO');
+            const resetMatchButton = document.getElementById('resetMatchButton');
+            const gameBoard = document.getElementById('gameBoard');
+
+            let currentPlayer = 'X';
+            let gameState = ['', '', '', '', '', '', '', '', '']; // 遊戲版面狀態
+            let gameActive = true; // 目前這局遊戲是否進行中
+            let scoreX = 0;
+            let scoreO = 0;
+            const winningScore = 2; // 設定幾勝
+
+            const winningConditions = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // 橫排
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // 直排
+                [0, 4, 8], [2, 4, 6]  // 斜線
+            ];
+
+            // --- 主要函式 ---
+
+            // 處理格子點擊
+            function handleCellClick(event) {
+                const clickedCell = event.target;
+                const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+                // 檢查格子是否已填或遊戲是否結束
+                if (gameState[clickedCellIndex] !== '' || !gameActive) {
+                    return;
+                }
+
+                // 更新遊戲狀態
+                gameState[clickedCellIndex] = currentPlayer;
+                clickedCell.textContent = currentPlayer;
+                clickedCell.classList.add(currentPlayer.toLowerCase()); // 加上 x 或 o 的 class
+
+                // 檢查結果
+                checkResult();
+            }
+
+            // 切換玩家
+            function switchPlayer() {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                statusDisplay.textContent = `輪到玩家 ${currentPlayer}`;
+            }
+
+            // 檢查遊戲結果 (勝利或平手)
+            function checkResult() {
+                let roundWon = false;
+                for (let i = 0; i < winningConditions.length; i++) {
+                    const winCondition = winningConditions[i];
+                    let a = gameState[winCondition[0]];
+                    let b = gameState[winCondition[1]];
+                    let c = gameState[winCondition[2]];
+
+                    if (a === '' || b === '' || c === '') {
+                        continue; // 有空格，此條件不滿足
+                    }
+                    if (a === b && b === c) {
+                        roundWon = true; // 找到勝利者
+                        break;
+                    }
+                }
+
+                if (roundWon) {
+                    handleRoundEnd(false); // false 表示不是平手
+                    return;
+                }
+
+                // 檢查是否平手 (所有格子都填滿且無人勝利)
+                let roundDraw = !gameState.includes('');
+                if (roundDraw) {
+                    handleRoundEnd(true); // true 表示是平手
+                    return;
+                }
+
+                // 若無勝負也未平手，則切換玩家
+                switchPlayer();
+            }
+
+            // 處理一局結束
+            function handleRoundEnd(isDraw) {
+                gameActive = false; // 本局結束
+
+                if (isDraw) {
+                    statusDisplay.textContent = "這一局平手!";
+                } else {
+                    statusDisplay.textContent = `玩家 ${currentPlayer} 贏了這一局!`;
+                    // 更新分數
+                    if (currentPlayer === 'X') {
+                        scoreX++;
+                        scoreXDisplay.textContent = scoreX;
+                    } else {
+                        scoreO++;
+                        scoreODisplay.textContent = scoreO;
+                    }
+                }
+
+                // 檢查是否有人達到勝利分數
+                if (scoreX === winningScore || scoreO === winningScore) {
+                    declareMatchWinner();
+                } else {
+                    // 短暫延遲後開始下一局
+                    statusDisplay.textContent += " 準備開始下一局...";
+                    setTimeout(startNextRound, 2000); // 延遲 2 秒
+                }
+            }
+
+            // 宣布整場比賽勝利者
+            function declareMatchWinner() {
+                gameActive = false; // 整場比賽結束
+                gameBoard.classList.add('game-over'); // 加上結束樣式
+                const winner = scoreX === winningScore ? 'X' : 'O';
+                statusDisplay.textContent = `恭喜玩家 ${winner} 贏得整場比賽 (${scoreX} : ${scoreO})!`;
+                statusDisplay.style.fontWeight = 'bold'; // 加粗最終結果
+                statusDisplay.style.color = 'green'; // 最終結果用綠色
+            }
+
+            // 開始下一局
+            function startNextRound() {
+                // 決定下一局先手 (可以輪流，這裡維持 X 先手)
+                currentPlayer = 'X';
+                gameState = ['', '', '', '', '', '', '', '', ''];
+                gameActive = true;
+                statusDisplay.textContent = `輪到玩家 ${currentPlayer}`;
+                statusDisplay.style.fontWeight = 'normal'; // 恢復正常粗細
+                statusDisplay.style.color = '#d32f2f'; // 恢復預設顏色
+                gameBoard.classList.remove('game-over'); // 移除結束樣式
+                cells.forEach(cell => {
+                    cell.textContent = '';
+                    cell.classList.remove('x', 'o'); // 移除 x 和 o 的 class
+                });
+            }
+
+            // 重設整場比賽
+            function resetMatch() {
+                scoreX = 0;
+                scoreO = 0;
+                scoreXDisplay.textContent = scoreX;
+                scoreODisplay.textContent = scoreO;
+                startNextRound(); // 重設分數後，開始第一局
+            }
+
+            // --- 事件監聽 ---
+            cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+            resetMatchButton.addEventListener('click', resetMatch);
+
+            // --- 初始設定 ---
+            statusDisplay.textContent = `輪到玩家 ${currentPlayer}`; // 初始顯示
+        });
+    </script>
+
+</body>
+</html>
